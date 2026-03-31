@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using Vuforia;
 
+// Este script mueve a Miku entre distintos marcadores detectados por Vuforia.
+// También verifica si hay amigos en el marcador y los recluta.
 public class Move : MonoBehaviour
 {
     [Header("Referencias")]
@@ -12,41 +14,46 @@ public class Move : MonoBehaviour
 
     [Header("Movimiento")]
     public float speed = 1.5f;
-    public float stopDistance = 0.01f;
 
     [Header("Animación")]
-    public string idleBoolName = "IsMoving";
+    public string movingBoolName = "IsMoving";
 
     private bool isMoving = false;
     private int lastTargetIndex = -1;
 
+    // Se activa al presionar un botón
     public void MoveToRandomMarker()
     {
+        Debug.Log("BOTON MOVE SI FUE PRESIONADO");
+
         if (!isMoving)
         {
             StartCoroutine(MoveModel());
         }
     }
 
+    // Movimiento principal de Miku
     private IEnumerator MoveModel()
     {
         isMoving = true;
-
-        // Para que se despegue del marcador 1
-        model.transform.parent = null;
 
         ObserverBehaviour target = GetRandomDetectedTarget();
 
         if (target == null)
         {
+            Debug.Log("No se encontró ningún marcador válido");
             isMoving = false;
             yield break;
         }
 
-        // Activar caminar
+        // Se separa del marcador actual
+        // null = sin padre (independiente)
+        // true = mantiene su posición global (no se mueve de golpe)
+        model.transform.SetParent(null, true);
+
         if (animator != null)
         {
-            animator.SetBool(idleBoolName, true);
+            animator.SetBool(movingBoolName, true);
         }
 
         Vector3 startPosition = model.transform.position;
@@ -59,7 +66,7 @@ public class Move : MonoBehaviour
         float duration = distance / speed;
         float elapsed = 0f;
 
-        if (duration <= 0.01f)
+        if (duration < 0.01f)
             duration = 0.01f;
 
         while (elapsed < duration)
@@ -76,15 +83,33 @@ public class Move : MonoBehaviour
         model.transform.position = endPosition;
         model.transform.rotation = endRotation;
 
-        // Detener caminar al llegar
+        // Se vuelve hijo del nuevo marcador
+        // Esto hace que Miku se mueva junto con el marcador
+        // true = conserva su posición actual en el mundo
+        model.transform.SetParent(target.transform, true);
+
         if (animator != null)
         {
-            animator.SetBool(idleBoolName, false);
+            animator.SetBool(movingBoolName, false);
+        }
+
+        // Verifica si hay amigo en ese marcador
+        FriendEncounter encounter = target.GetComponent<FriendEncounter>();
+
+        if (encounter != null && encounter.IsVisible() && !encounter.IsRecruited())
+        {
+            encounter.RecruitFriend();
+
+            if (GameProgress.Instance != null)
+            {
+                GameProgress.Instance.RegisterFriend(encounter.friendName);
+            }
         }
 
         isMoving = false;
     }
 
+    // Obtiene un marcador detectado al azar
     private ObserverBehaviour GetRandomDetectedTarget()
     {
         List<int> availableIndexes = new List<int>();
