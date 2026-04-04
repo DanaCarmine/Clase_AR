@@ -1,31 +1,37 @@
 using System.Collections;
 using UnityEngine;
 
-// Este script controla las animaciones del amigo.
-// Hace que primero salude y después empiece a caminar.
 public class FriendAnimationController : MonoBehaviour
 {
-    private Animator animator;
+    [Header("Animator")]
+    public Animator animator;
+
+    [Header("Parámetros")]
+    public string idleBoolName = "isWalking";
+    public string greetingTriggerName = "Greeting";
 
     private void Awake()
     {
-        animator = GetComponent<Animator>();
+        if (animator == null)
+            animator = GetComponent<Animator>();
     }
 
-    // Ejecuta saludo y luego caminar
-    public void PlayGreetingThenWalk(float delayBeforeWalk = 2.0f)
+    public void PlayGreeting(float greetingDuration = 2f)
     {
-        StartCoroutine(GreetingThenWalkCoroutine(delayBeforeWalk));
+        StopAllCoroutines();
+        StartCoroutine(GreetingCoroutine(greetingDuration));
     }
 
-    private IEnumerator GreetingThenWalkCoroutine(float delay)
+    private IEnumerator GreetingCoroutine(float duration)
     {
         if (animator == null) yield break;
 
-        animator.SetBool("isWalking", false);
+        if (!string.IsNullOrEmpty(idleBoolName))
+            animator.SetBool(idleBoolName, false);
 
-        yield return new WaitForSeconds(delay);
+        if (!string.IsNullOrEmpty(greetingTriggerName))
+            animator.SetTrigger(greetingTriggerName);
 
-        animator.SetBool("isWalking", true);
+        yield return new WaitForSeconds(duration);
     }
 }
